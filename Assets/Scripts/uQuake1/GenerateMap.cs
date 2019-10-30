@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System.IO;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -10,6 +11,7 @@ public class GenerateMap : MonoBehaviour
     public bool lightMapsEnabled;
     public bool skipSky;
     private BSP29map map;
+    private Dictionary<string, Material> materialDictionary;
 
     void Start()
     {
@@ -29,8 +31,15 @@ public class GenerateMap : MonoBehaviour
 
     void GenerateMapObjects()
     {
+        materialDictionary = new Dictionary<string, Material>();
+
         foreach (BSPFace face in map.facesLump.faces)
             GenerateFaceObject(face);
+
+        foreach (string name in materialDictionary.Keys)
+            ExportMaterial(name, materialDictionary[name]);
+
+        AssetDatabase.SaveAssets();
     }
 
 
@@ -61,6 +70,11 @@ public class GenerateMap : MonoBehaviour
 
 
     #region Face Object Generation
+
+    void ExportMaterial(string materialName, Material material)
+    {
+        AssetDatabase.CreateAsset(material, "Assets/Resources/Materials/" + materialName + ".mat");
+    }
 
     GameObject GenerateFaceObject(BSPFace face)
     {
@@ -103,6 +117,7 @@ public class GenerateMap : MonoBehaviour
         for (int i = 0; i < face.num_ledges; i++)
         {
             uvs[i] = new Vector2((Vector3.Dot(verts[i], map.texinfoLump.texinfo[face.texinfo_id].vec3s) + map.texinfoLump.texinfo[face.texinfo_id].offs) / scales, (Vector3.Dot(verts[i], map.texinfoLump.texinfo[face.texinfo_id].vec3t) + map.texinfoLump.texinfo[face.texinfo_id].offt) / scalet);
+            uvs[i].y = (1.0f - uvs[i].y);
         }
 
         faceMesh.vertices = verts;
@@ -115,6 +130,7 @@ public class GenerateMap : MonoBehaviour
 
         // We make a material and then use shared material to work around a leak in the editor
         Material mat;
+        string textureName = map.miptexLump.textures[map.texinfoLump.texinfo[face.texinfo_id].miptex].name;
 
         if (lightMapsEnabled)
         {
@@ -142,7 +158,12 @@ public class GenerateMap : MonoBehaviour
         }
         else
         {
-            mat = new Material(Shader.Find("Diffuse"));
+            if (materialDictionary.ContainsKey(textureName)) {
+                mat = materialDictionary[textureName];
+            } else {
+                mat = new Material(Shader.Find("Diffuse"));
+                materialDictionary[textureName] = mat;
+            }
         }
 
         // Set the texture we made above, after possible lightmapping circlejerk

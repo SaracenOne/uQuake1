@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using UnityEditor;
 using UnityEngine;
 
 public class BSP29map
@@ -18,6 +19,33 @@ public class BSP29map
     public BSPModelLump modelLump;
     public BSPLightMapLump lightLump;
 
+    public void SerialiseTextures() {
+#if UNITY_EDITOR
+        for (int i = 0; i < miptexLump.tex_count; i++)
+        {
+            string name = miptexLump.textures[i].name;
+            string sanitised_name = name.Replace('*', '_');
+
+            string texWritePath = Application.dataPath + "/Resources/Textures/" + sanitised_name;
+            byte[] bytes = miptexLump.textures[i].EncodeToPNG();
+
+            File.WriteAllBytes(texWritePath + ".png", bytes);
+        }
+
+        AssetDatabase.Refresh();
+
+        for (int i = 0; i < miptexLump.tex_count; i++)
+        {
+            string name = miptexLump.textures[i].name;
+            string sanitised_name = name.Replace('*', '_');
+
+            string texReadPath = "Assets/Resources/Textures/" + sanitised_name + ".png";
+            Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texReadPath);
+            miptexLump.textures[i] = texture;
+        }
+#endif
+    }
+
     public BSP29map(string filename)
     {
         BSPfile = new BinaryReader(File.Open("Assets/Resources/Maps/" + filename, FileMode.Open));
@@ -32,6 +60,8 @@ public class BSP29map
         ReadTextures();
         ReadModels();
         ReadLightMaps();
+
+        SerialiseTextures();
 
         BSPfile.BaseStream.Dispose();
     }
@@ -132,7 +162,10 @@ public class BSP29map
         // objects that can be used directly
         for (int i = 0; i < miptexLump.tex_count; i++)
         {
-            miptexLump.textures[i] = new Texture2D(miptexLump.texture_headers[i].width, miptexLump.texture_headers[i].height);
+            int height = miptexLump.texture_headers[i].height;
+			int width = miptexLump.texture_headers[i].width;
+
+            miptexLump.textures[i] = new Texture2D(width, height);
             miptexLump.textures[i].name = miptexLump.texture_headers[i].name;
             Color32[] colors = new Color32[miptexLump.texture_headers[i].PixelCount];
             BSPfile.BaseStream.Seek(header.directory[2].Offset + miptexLump.tex_offsets[i] + miptexLump.texture_headers[i].offset, SeekOrigin.Begin);
@@ -141,7 +174,17 @@ public class BSP29map
                 int index = (int)BSPfile.ReadByte();
                 colors[j] = palette.colors[index];
             }
-            miptexLump.textures[i].SetPixels32(colors);
+
+            Color32[] flippedColors = new Color32[miptexLump.texture_headers[i].PixelCount];
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    flippedColors[(((width * height) - width) - (y * width)) + x] = colors[(y * width) + x];
+                }
+            }
+
+            miptexLump.textures[i].SetPixels32(flippedColors);
             miptexLump.textures[i].filterMode = FilterMode.Point;
             miptexLump.textures[i].Apply();
         }
