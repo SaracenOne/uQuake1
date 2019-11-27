@@ -37,6 +37,9 @@ public class GenerateMap : MonoBehaviour
     {
         materialDictionary = new Dictionary<string, Material>();
 
+        foreach (Dictionary<string, string> entity in map.entityLump.entityDictionary)
+            GenerateEntity(entity);
+
         foreach (BSPFace face in map.facesLump.faces)
             GenerateFaceObject(face);
 
@@ -99,6 +102,36 @@ public class GenerateMap : MonoBehaviour
         }
     }
 
+    GameObject GenerateEntity(Dictionary<string, string> entity)
+    {
+        if (entity.ContainsKey("classname")) {
+            string classname = entity["classname"];
+            GameObject entityObject = new GameObject(classname);
+            entityObject.transform.parent = gameObject.transform;
+
+            if (entity.ContainsKey("origin")) {
+                string originString = entity["origin"];
+                string[] coordinates = originString.Split(' ');
+                if(coordinates.Length == 3) {
+                    float x = -float.Parse(coordinates[0]) * BSP29map.QUAKE_TO_UNITY_CONVERSION_SCALE;
+                    float y = float.Parse(coordinates[2]) * BSP29map.QUAKE_TO_UNITY_CONVERSION_SCALE; ;
+                    float z = -float.Parse(coordinates[1]) * BSP29map.QUAKE_TO_UNITY_CONVERSION_SCALE;
+
+                    entityObject.transform.localPosition = new Vector3(x, y, z);
+                }
+            }
+
+            if(classname == "light") {
+                entityObject.AddComponent<Light>();
+                entityObject.isStatic = true;
+            }
+
+            return entityObject;
+        }
+
+        return null;
+    }
+
     GameObject GenerateFaceObject(BSPFace face)
     {
         GameObject faceObject = new GameObject("BSPface");
@@ -134,8 +167,8 @@ public class GenerateMap : MonoBehaviour
         }
 
         // whip up uvs
-        float scales = map.miptexLump.textures[map.texinfoLump.texinfo[face.texinfo_id].miptex].width * 0.03f;
-        float scalet = map.miptexLump.textures[map.texinfoLump.texinfo[face.texinfo_id].miptex].height * 0.03f;
+        float scales = map.miptexLump.textures[map.texinfoLump.texinfo[face.texinfo_id].miptex].width * BSP29map.QUAKE_TO_UNITY_CONVERSION_SCALE;
+        float scalet = map.miptexLump.textures[map.texinfoLump.texinfo[face.texinfo_id].miptex].height * BSP29map.QUAKE_TO_UNITY_CONVERSION_SCALE;
         Vector2[] uvs = new Vector2[face.num_ledges];
         for (int i = 0; i < face.num_ledges; i++)
         {

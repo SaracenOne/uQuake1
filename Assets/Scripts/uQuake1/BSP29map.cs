@@ -6,7 +6,8 @@ using UnityEngine;
 
 public class BSP29map
 {
-    const string PNG_EXTENSION = ".png";
+    public const float QUAKE_TO_UNITY_CONVERSION_SCALE = 0.03f;
+    public const string EXPORT_TEXTURE_EXTENSION = ".png";
 
     private BinaryReader BSPfile;
     public BSPHeader header;
@@ -31,14 +32,14 @@ public class BSP29map
         {
             Texture2D externalTexture = null;
             if (!overrideTextures) {
-                string texReadPath = "Assets/Resources/Textures/" + miptexLump.textures[i].name + PNG_EXTENSION;
+                string texReadPath = "Assets/Resources/Textures/" + miptexLump.textures[i].name + EXPORT_TEXTURE_EXTENSION;
                 externalTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(texReadPath);
             }
 
             if (externalTexture == null) {
                 string name = miptexLump.textures[i].name;
 
-                string texWritePath = Application.dataPath + "/Resources/Textures/" + name + PNG_EXTENSION;
+                string texWritePath = Application.dataPath + "/Resources/Textures/" + name + EXPORT_TEXTURE_EXTENSION;
 
                 byte[] bytes = miptexLump.textures[i].EncodeToPNG();
 
@@ -53,7 +54,7 @@ public class BSP29map
         {
             string name = textureNames[i];
 
-            string texReadPath = "Assets/Resources/Textures/" + name + PNG_EXTENSION;
+            string texReadPath = "Assets/Resources/Textures/" + name + EXPORT_TEXTURE_EXTENSION;
             Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texReadPath);
             miptexLump.textures[i] = texture;
         }
@@ -189,7 +190,7 @@ public class BSP29map
             string name = miptexLump.texture_headers[i].name.Replace('*', '_');
 
             if (!overrideTextures) {
-                string texReadPath = "Assets/Resources/Textures/" + name + PNG_EXTENSION;
+                string texReadPath = "Assets/Resources/Textures/" + name + EXPORT_TEXTURE_EXTENSION;
                 Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texReadPath);
                 if(texture) {
                     miptexLump.textures[i] = texture;

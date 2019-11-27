@@ -19,8 +19,8 @@ public class BSPTexInfo
         this.vec3t = vt;
         this.miptex = miptex;
         this.flags = flags;
-        this.offs = os * 0.03f;
-        this.offt = ot * 0.03f;
+        this.offs = os * BSP29map.QUAKE_TO_UNITY_CONVERSION_SCALE;
+        this.offt = ot * BSP29map.QUAKE_TO_UNITY_CONVERSION_SCALE;
 
         Swizzle();
     }
