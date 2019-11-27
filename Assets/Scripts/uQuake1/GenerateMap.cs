@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 using System.IO;
+using UnityEditor.SceneManagement;
+using UnityEngine.SceneManagement;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -10,6 +12,8 @@ public class GenerateMap : MonoBehaviour
     public string mapName;
     public bool lightMapsEnabled;
     public bool skipSky;
+	public bool overrideMaterials;
+	public bool overrideTextures;
     private BSP29map map;
     private Dictionary<string, Material> materialDictionary;
 
@@ -25,7 +29,7 @@ public class GenerateMap : MonoBehaviour
 
     void PopulateLevel()
     {
-        map = new BSP29map(mapName);
+        map = new BSP29map(mapName, overrideTextures);
         GenerateMapObjects();
     }
 
@@ -53,14 +57,25 @@ public class GenerateMap : MonoBehaviour
         {
             DrawDefaultInspector();
             GenerateMap script = (GenerateMap)target;
-            if (GUILayout.Button("Generate"))
+            if (GUILayout.Button("Generate")) {
                 script.PopulateLevel();
+#if UNITY_EDITOR
+                EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+#endif
+            }
 
             if (GUILayout.Button("Clear"))
             {
-                var children = new List<GameObject>();
-                foreach (Transform child in script.gameObject.transform) children.Add(child.gameObject);
-                children.ForEach(child => DestroyImmediate(child));
+                if (script.gameObject.transform.childCount > 0)
+                {
+                    var children = new List<GameObject>();
+                    foreach (Transform child in script.gameObject.transform) children.Add(child.gameObject);
+                    children.ForEach(child => DestroyImmediate(child));
+
+#if UNITY_EDITOR
+                    EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+#endif
+                }
             }
         }
     }
@@ -73,7 +88,15 @@ public class GenerateMap : MonoBehaviour
 
     void ExportMaterial(string materialName, Material material)
     {
-        AssetDatabase.CreateAsset(material, "Assets/Resources/Materials/" + materialName + ".mat");
+        string matReadPath = "Assets/Resources/Materials/" + materialName + ".mat";
+        if (overrideMaterials) {
+            AssetDatabase.CreateAsset(material, matReadPath);
+        } else {
+            Material serialisedMaterial = AssetDatabase.LoadAssetAtPath<Material>(matReadPath);
+            if(!serialisedMaterial) {
+                AssetDatabase.CreateAsset(material, matReadPath);
+            }
+        }
     }
 
     GameObject GenerateFaceObject(BSPFace face)
@@ -129,7 +152,7 @@ public class GenerateMap : MonoBehaviour
         faceObject.AddComponent<MeshRenderer>();
 
         // We make a material and then use shared material to work around a leak in the editor
-        Material mat;
+        Material mat = null;
         string textureName = map.miptexLump.textures[map.texinfoLump.texinfo[face.texinfo_id].miptex].name;
 
         if (lightMapsEnabled)
@@ -161,8 +184,18 @@ public class GenerateMap : MonoBehaviour
             if (materialDictionary.ContainsKey(textureName)) {
                 mat = materialDictionary[textureName];
             } else {
-                mat = new Material(Shader.Find("Diffuse"));
-                materialDictionary[textureName] = mat;
+                if (!overrideMaterials)  {
+                    string matReadPath = "Assets/Resources/Materials/" + textureName + ".mat";
+                    mat = AssetDatabase.LoadAssetAtPath<Material>(matReadPath);
+                    if (mat) {
+                        materialDictionary[textureName] = mat;
+                    }
+                }
+
+                if (mat == null) {
+                    mat = new Material(Shader.Find("Diffuse"));
+                    materialDictionary[textureName] = mat;
+                }
             }
         }
 

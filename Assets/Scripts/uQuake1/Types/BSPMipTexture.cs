@@ -12,9 +12,9 @@ public class BSPMipTexture
 
     public int PixelCount { get { return width * height; } }
 
-    public BSPMipTexture(char[] name, int width, int height, int offset)
+    public BSPMipTexture(string name, int width, int height, int offset)
     {
-        this.name = new string(name);
+        this.name = name;
         this.width = width;
         this.height = height;
         this.offset = offset;
